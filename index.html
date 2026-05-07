@@ -572,18 +572,18 @@ function updateGlassesPreview(text) {
     disp.innerHTML = 'Start typing to see it on your glasses…<span id="cursor"></span>';
     return;
   }
-  const recent = text.length > 280 ? '…' + text.slice(-277) : text;
+  const recent = text.length > 500 ? '…' + text.slice(-499) : text;
   const words = recent.split(' ');
   const lines = [];
   let cur = '';
   for (const w of words) {
     const cand = cur ? cur + ' ' + w : w;
-    if (cand.length > 28) { if (cur) lines.push(cur); cur = w; }
+    if (cand.length > 55) { if (cur) lines.push(cur); cur = w; }
     else cur = cand;
   }
   if (cur) lines.push(cur);
   disp.className = '';
-  disp.innerHTML = lines.slice(-5).join('\n').replace(/\n/g, '<br>') + '<span id="cursor"></span>';
+  disp.innerHTML = lines.slice(-6).join('\n').replace(/\n/g, '<br>') + '<span id="cursor"></span>';
 }
 
 function updateWordCount(text) {

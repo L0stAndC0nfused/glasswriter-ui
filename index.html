@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#080c0a">
+<title>GlassWriter</title>
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c0a;
+    --surface: #0f1712;
+    --surface2: #151f19;
+    --border: #1a2e22;
+    --green1: #4af0c4;
+    --green2: #00c878;
+    --green3: #008850;
+    --green4: #004428;
+    --dim: #1e3828;
+    --text: #c8ead8;
+    --muted: #3a6050;
+    --danger: #f06060;
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    overflow: hidden;
+  }
+
+  #app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* ── Top bar ── */
+  #topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    background: var(--surface);
+  }
+
+  #logo-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 15px;
+    letter-spacing: 0.15em;
+    color: var(--green1);
+  }
+
+  #logo-sub {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+  }
+
+  #status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+  }
+
+  #dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s, box-shadow 0.3s;
+    flex-shrink: 0;
+  }
+  #dot.live { background: var(--green1); box-shadow: 0 0 8px var(--green1); animation: pulse 2s infinite; }
+  #dot.error { background: var(--danger); }
+  #dot.connecting { background: #f0c040; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+  #topbar-right { display: flex; align-items: center; gap: 6px; }
+
+  .icon-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Glasses preview ── */
+  #glasses-strip {
+    background: #050908;
+    border-bottom: 1px solid var(--green4);
+    padding: 8px 14px 10px;
+    flex-shrink: 0;
+  }
+
+  #glasses-label {
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    color: var(--green4);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+    font-family: 'Share Tech Mono', monospace;
+  }
+
+  #glasses-display {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    color: var(--green1);
+    line-height: 1.6;
+    min-height: 18px;
+    word-break: break-word;
+    white-space: pre-wrap;
+    letter-spacing: 0.04em;
+  }
+  #glasses-display.empty { color: var(--dim); }
+
+  #cursor {
+    display: inline-block;
+    width: 7px; height: 13px;
+    background: var(--green1);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+  /* ── Error bar ── */
+  #error-bar {
+    background: #1a0808;
+    border-bottom: 1px solid #3a1010;
+    padding: 7px 14px;
+    font-size: 11px;
+    color: #f08080;
+    letter-spacing: 0.06em;
+    display: none;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  #error-bar.show { display: flex; }
+  #error-bar button {
+    background: none; border: none; color: var(--green1);
+    font-family: inherit; font-size: 11px; cursor: pointer;
+    text-decoration: underline; padding: 0;
+  }
+
+  /* ── Main textarea ── */
+  #editor-wrap { flex: 1; overflow: hidden; }
+
+  #editor {
+    width: 100%; height: 100%;
+    background: transparent;
+    border: none; outline: none;
+    color: var(--text);
+    font-family: 'Courier Prime', monospace;
+    font-size: 17px;
+    line-height: 1.75;
+    padding: 18px 16px;
+    resize: none;
+    caret-color: var(--green1);
+  }
+  #editor::placeholder { color: var(--dim); font-style: italic; }
+  #editor::-webkit-scrollbar { width: 3px; }
+  #editor::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* ── Bottom toolbar ── */
+  #toolbar {
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    background: var(--surface);
+    gap: 8px;
+  }
+
+  #wordcount {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: 'Share Tech Mono', monospace;
+    letter-spacing: 0.08em;
+    flex-shrink: 0;
+  }
+
+  #toolbar-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+  .action-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-family: 'Courier Prime', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+  .action-btn.primary { border-color: var(--green1); color: var(--green1); }
+  .action-btn.success { border-color: var(--green2); color: var(--green2); background: var(--green4); }
+
+  /* ── Panels ── */
+  #panel-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 10; display: none;
+  }
+  #panel-overlay.show { display: block; }
+
+  .panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    padding: 20px 16px 40px;
+    z-index: 20;
+    display: none;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .panel.show { display: block; }
+
+  .panel-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+
+  .panel-title {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--green1);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .setting-label { font-size: 11px; color: var(--muted); letter-spacing: 0.1em; margin-bottom: 6px; }
+
+  .setting-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 13px;
+    margin-bottom: 8px;
+    outline: none;
+  }
+  .setting-input:focus { border-color: var(--green3); }
+
+  .setting-hint {
+    font-size: 10px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 16px;
+  }
+  .setting-hint code {
+    color: var(--green1);
+    background: var(--green4);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  .panel-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+  .doc-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .doc-item.active { border-color: var(--green3); background: var(--green4); }
+  .doc-preview { font-size: 13px; color: var(--text); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; margin-bottom: 4px; }
+  .doc-meta { font-size: 10px; color: var(--muted); font-family: 'Share Tech Mono', monospace; }
+  .doc-del { background: none; border: none; color: #5a2a2a; font-size: 16px; cursor: pointer; padding: 0 4px; flex-shrink: 0; }
+  .empty-state { text-align: center; color: var(--muted); font-size: 13px; padding: 32px 0; }
+
+  /* ── Setup screen (shown when no URL saved) ── */
+  #setup-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  #setup-screen.hidden { display: none; }
+
+  .setup-logo {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 28px;
+    letter-spacing: 0.2em;
+    color: var(--green1);
+    margin-bottom: 6px;
+  }
+  .setup-sub {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.15em;
+    margin-bottom: 40px;
+  }
+  .setup-label {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+    margin-bottom: 8px;
+    text-align: left;
+    width: 100%;
+    max-width: 360px;
+  }
+  .setup-input {
+    width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--green3);
+    color: var(--text);
+    padding: 14px 16px;
+    border-radius: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    outline: none;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .setup-hint {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.7;
+    max-width: 320px;
+    margin-bottom: 28px;
+  }
+  .setup-btn {
+    background: var(--green3);
+    border: none;
+    color: #000;
+    padding: 14px 32px;
+    border-radius: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 14px;
+    letter-spacing: 0.1em;
+    cursor: pointer;
+    width: 100%;
+    max-width: 360px;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── First-time setup screen ── -->
+<div id="setup-screen">
+  <div class="setup-logo">GLASSWRITER</div>
+  <div class="setup-sub">G1 SMART GLASSES TYPEWRITER</div>
+  <div class="setup-label">Your Render Server URL</div>
+  <input class="setup-input" id="setup-url" type="url" placeholder="https://glasswriter.onrender.com" autocomplete="off" autocorrect="off" autocapitalize="off">
+  <div class="setup-hint">
+    Paste the URL from your Render deployment.<br>
+    No trailing slash. You only need to do this once.
+  </div>
+  <button class="setup-btn" onclick="completeSetup()">Connect & Start Writing</button>
+</div>
+
+<!-- ── Main app ── -->
+<div id="app">
+  <div id="topbar">
+    <div>
+      <div id="logo-text">GLASSWRITER</div>
+      <div id="logo-sub">G1 TYPEWRITER</div>
+    </div>
+    <div id="topbar-right">
+      <div id="status">
+        <div id="dot"></div>
+        <span id="status-text">offline</span>
+      </div>
+      <button class="icon-btn" onclick="openPanel('docs-panel')">docs</button>
+      <button class="icon-btn" onclick="openPanel('settings-panel')">⚙</button>
+    </div>
+  </div>
+
+  <div id="error-bar">
+    <span id="error-msg">⚠ Cannot reach server</span>
+    <button onclick="testConnection()">retry</button>
+  </div>
+
+  <div id="glasses-strip">
+    <div id="glasses-label">◈ glasses display</div>
+    <div id="glasses-display" class="empty">Connect server to mirror to glasses…<span id="cursor"></span></div>
+  </div>
+
+  <div id="editor-wrap">
+    <textarea id="editor"
+      placeholder="Start typing. Your words appear on the glasses in real time."
+      spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off"
+    ></textarea>
+  </div>
+
+  <div id="toolbar">
+    <div id="wordcount">0 words · 0 chars</div>
+    <div id="toolbar-actions">
+      <button class="action-btn" onclick="saveDoc()">save</button>
+      <button class="action-btn primary" id="copy-btn" onclick="copyAll()">copy all</button>
+      <button class="action-btn" onclick="newDoc()">+ new</button>
+    </div>
+  </div>
+</div>
+
+<div id="panel-overlay" onclick="closePanels()"></div>
+
+<!-- Settings panel -->
+<div class="panel" id="settings-panel">
+  <div class="panel-handle"></div>
+  <div class="panel-title">⚙ Server Settings</div>
+  <div class="setting-label">Server URL</div>
+  <input class="setting-input" id="url-input" type="url" placeholder="https://glasswriter.onrender.com" autocomplete="off" autocorrect="off" autocapitalize="off">
+  <div class="setting-hint">
+    Your Render URL — e.g. <code>https://glasswriter.onrender.com</code><br>
+    No trailing slash. No port number.
+  </div>
+  <div class="panel-actions">
+    <button class="action-btn primary" onclick="saveSettings()">Save & Connect</button>
+    <button class="action-btn" onclick="closePanels()">Cancel</button>
+  </div>
+</div>
+
+<!-- Docs panel -->
+<div class="panel" id="docs-panel">
+  <div class="panel-handle"></div>
+  <div class="panel-title">◈ Saved Documents</div>
+  <button class="action-btn primary" style="margin-bottom:14px;width:100%;display:block" onclick="newDoc();closePanels()">+ New Document</button>
+  <div id="docs-list"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'gw_sessions_v1';
+const URL_KEY = 'gw_server_url';
+
+let serverUrl = localStorage.getItem(URL_KEY) || '';
+let sessions = loadSessions();
+let activeId = null;
+let connected = false;
+let debounceTimer = null;
+let lastSent = '';
+
+const editor = document.getElementById('editor');
+const urlInput = document.getElementById('url-input');
+
+// Show setup screen if no URL saved yet
+if (!serverUrl) {
+  document.getElementById('setup-screen').classList.remove('hidden');
+} else {
+  document.getElementById('setup-screen').classList.add('hidden');
+  urlInput.value = serverUrl;
+  testConnection();
+}
+
+editor.addEventListener('input', onEdit);
+setInterval(saveDoc, 15000);
+setInterval(testConnection, 30000);
+
+function completeSetup() {
+  const val = document.getElementById('setup-url').value.trim().replace(/\/$/, '');
+  if (!val || !val.startsWith('http')) {
+    alert('Please enter a valid URL starting with https://');
+    return;
+  }
+  serverUrl = val;
+  localStorage.setItem(URL_KEY, serverUrl);
+  urlInput.value = serverUrl;
+  document.getElementById('setup-screen').classList.add('hidden');
+  testConnection();
+  editor.focus();
+}
+
+function loadSessions() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  catch { return []; }
+}
+function saveSessions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); }
+
+function fmt(ts) {
+  return new Date(ts).toLocaleDateString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+}
+
+function setStatus(state, msg) {
+  document.getElementById('dot').className = state;
+  document.getElementById('status-text').textContent = msg;
+  connected = state === 'live';
+}
+
+async function testConnection() {
+  if (!serverUrl) { setStatus('error', 'no server'); return; }
+  setStatus('connecting', 'connecting…');
+  try {
+    const r = await fetch(serverUrl + '/ping', { signal: AbortSignal.timeout(5000) });
+    if (r.ok) {
+      const d = await r.json();
+      setStatus('live', d.sessions > 0 ? 'glasses live' : 'server live');
+      document.getElementById('error-bar').classList.remove('show');
+    } else { throw new Error(); }
+  } catch {
+    setStatus('error', 'offline');
+    document.getElementById('error-msg').textContent = '⚠ Cannot reach server — is Render awake?';
+    document.getElementById('error-bar').classList.add('show');
+  }
+}
+
+function onEdit() {
+  const text = editor.value;
+  updateWordCount(text);
+  updateGlassesPreview(text);
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => sendText(text), 80);
+}
+
+async function sendText(text) {
+  if (!serverUrl || text === lastSent) return;
+  lastSent = text;
+  try {
+    const r = await fetch(serverUrl + '/text', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal: AbortSignal.timeout(3000),
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setStatus('live', d.sessions > 0 ? 'glasses live' : 'server live');
+      document.getElementById('error-bar').classList.remove('show');
+    }
+  } catch {
+    setStatus('error', 'offline');
+    document.getElementById('error-msg').textContent = '⚠ Lost connection — Render may be sleeping';
+    document.getElementById('error-bar').classList.add('show');
+  }
+}
+
+function updateGlassesPreview(text) {
+  const disp = document.getElementById('glasses-display');
+  if (!text) {
+    disp.className = 'empty';
+    disp.innerHTML = 'Start typing to see it on your glasses…<span id="cursor"></span>';
+    return;
+  }
+  const recent = text.length > 280 ? '…' + text.slice(-277) : text;
+  const words = recent.split(' ');
+  const lines = [];
+  let cur = '';
+  for (const w of words) {
+    const cand = cur ? cur + ' ' + w : w;
+    if (cand.length > 28) { if (cur) lines.push(cur); cur = w; }
+    else cur = cand;
+  }
+  if (cur) lines.push(cur);
+  disp.className = '';
+  disp.innerHTML = lines.slice(-5).join('\n').replace(/\n/g, '<br>') + '<span id="cursor"></span>';
+}
+
+function updateWordCount(text) {
+  const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+  document.getElementById('wordcount').textContent = `${words} word${words!==1?'s':''} · ${text.length} chars`;
+}
+
+function saveDoc() {
+  const text = editor.value;
+  if (!text.trim()) return;
+  const now = Date.now();
+  if (activeId) {
+    sessions = sessions.map(s => s.id === activeId ? {...s, text, updatedAt: now} : s);
+  } else {
+    activeId = now;
+    sessions = [{ id: now, text, createdAt: now, updatedAt: now }, ...sessions];
+  }
+  saveSessions();
+}
+
+function newDoc() {
+  saveDoc();
+  editor.value = ''; activeId = null; lastSent = '';
+  updateWordCount(''); updateGlassesPreview(''); sendText('');
+  editor.focus();
+}
+
+function openDoc(id) {
+  saveDoc();
+  const s = sessions.find(s => s.id === id);
+  if (!s) return;
+  editor.value = s.text; activeId = id; lastSent = '';
+  updateWordCount(s.text); updateGlassesPreview(s.text);
+  closePanels(); editor.focus();
+}
+
+function deleteDoc(id, e) {
+  e.stopPropagation();
+  sessions = sessions.filter(s => s.id !== id);
+  if (activeId === id) { editor.value = ''; activeId = null; updateWordCount(''); updateGlassesPreview(''); }
+  saveSessions(); renderDocs();
+}
+
+function renderDocs() {
+  const list = document.getElementById('docs-list');
+  if (!sessions.length) { list.innerHTML = '<div class="empty-state">No saved documents yet</div>'; return; }
+  list.innerHTML = sessions.map(s => `
+    <div class="doc-item ${s.id === activeId ? 'active' : ''}" onclick="openDoc(${s.id})">
+      <div style="flex:1;min-width:0">
+        <div class="doc-preview">${(s.text.slice(0,60)||'(empty)').replace(/</g,'&lt;')}</div>
+        <div class="doc-meta">${fmt(s.updatedAt)} · ${s.text.trim().split(/\s+/).filter(Boolean).length} words</div>
+      </div>
+      <button class="doc-del" onclick="deleteDoc(${s.id},event)">✕</button>
+    </div>
+  `).join('');
+}
+
+async function copyAll() {
+  const text = editor.value;
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta);
+  }
+  const btn = document.getElementById('copy-btn');
+  btn.textContent = '✓ copied!'; btn.classList.add('success');
+  setTimeout(() => { btn.textContent = 'copy all'; btn.classList.remove('success'); }, 2000);
+}
+
+function saveSettings() {
+  const val = urlInput.value.trim().replace(/\/$/, '');
+  if (!val) return;
+  serverUrl = val;
+  localStorage.setItem(URL_KEY, serverUrl);
+  closePanels(); testConnection();
+}
+
+function openPanel(id) {
+  if (id === 'docs-panel') renderDocs();
+  document.getElementById('panel-overlay').classList.add('show');
+  document.getElementById(id).classList.add('show');
+}
+
+function closePanels() {
+  document.getElementById('panel-overlay').classList.remove('show');
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('show'));
+}
+
+urlInput.addEventListener('keydown', e => { if (e.key === 'Enter') saveSettings(); });
+document.getElementById('setup-url').addEventListener('keydown', e => { if (e.key === 'Enter') completeSetup(); });
+</script>
+</body>
+</html>

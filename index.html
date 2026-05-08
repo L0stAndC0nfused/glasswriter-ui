@@ -586,8 +586,12 @@ function updateGlassesPreview(text) {
       continue;
     }
     const cand = cur ? cur + ' ' + w : w;
-    if (cand.length > CHARS) { lines.push(cur); cur = w; }
-    else cur = cand;
+    if (cand.length > CHARS) {
+      if (cur) lines.push(cur);
+      cur = w;
+    } else {
+      cur = cand;
+    }
   }
   if (cur) lines.push(cur);
   disp.className = '';
